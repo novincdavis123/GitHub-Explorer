@@ -1,12 +1,6 @@
-class GithubUserModel {
-  final String username;
-  final String avatarUrl;
-  final String? name;
-  final String? bio;
-  final int followers;
-  final int following;
-  final int publicRepos;
+import 'package:equatable/equatable.dart';
 
+class GithubUserModel extends Equatable {
   const GithubUserModel({
     required this.username,
     required this.avatarUrl,
@@ -16,6 +10,14 @@ class GithubUserModel {
     required this.following,
     required this.publicRepos,
   });
+
+  final String username;
+  final String avatarUrl;
+  final String? name;
+  final String? bio;
+  final int followers;
+  final int following;
+  final int publicRepos;
 
   factory GithubUserModel.fromJson(Map<String, dynamic> json) {
     return GithubUserModel(
@@ -28,4 +30,15 @@ class GithubUserModel {
       publicRepos: json['public_repos'] as int? ?? 0,
     );
   }
+
+  @override
+  List<Object?> get props => [
+    username,
+    avatarUrl,
+    name,
+    bio,
+    followers,
+    following,
+    publicRepos,
+  ];
 }

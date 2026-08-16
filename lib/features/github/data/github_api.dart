@@ -8,14 +8,14 @@ class GithubApi {
   final DioClient _dioClient;
 
   Future<GithubUserModel> getUser(String username) async {
-    final response = await _dioClient.dio.get('/users/$username');
+    final response = await _dioClient.dio.get('/users/${username.trim()}');
 
     return GithubUserModel.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<List<GithubRepoModel>> getRepositories(String username) async {
     final response = await _dioClient.dio.get(
-      '/users/$username/repos',
+      '/users/${username.trim()}/repos',
       queryParameters: {'per_page': 100},
     );
 

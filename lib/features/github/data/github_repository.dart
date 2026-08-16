@@ -7,11 +7,11 @@ class GithubRepository {
 
   final GithubApi _api;
 
-  Future<GithubUserModel> getUser(String username) {
-    return _api.getUser(username);
+  Future<GithubUserModel> getUser(String username) async {
+    return _api.getUser(username.trim());
   }
 
-  Future<List<GithubRepoModel>> getRepositories(String username) {
-    return _api.getRepositories(username);
+  Future<List<GithubRepoModel>> getRepositories(String username) async {
+    return _api.getRepositories(username.trim());
   }
 }
