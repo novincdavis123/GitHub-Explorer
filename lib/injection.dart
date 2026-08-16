@@ -7,13 +7,21 @@ import 'package:githubexplorer/features/github/presentation/bloc/github_bloc.dar
 final GetIt sl = GetIt.instance;
 
 Future<void> init() async {
-  sl.registerLazySingleton<DioClient>(DioClient.new);
+  if (!sl.isRegistered<DioClient>()) {
+    sl.registerLazySingleton<DioClient>(DioClient.new);
+  }
 
-  sl.registerLazySingleton<GithubApi>(() => GithubApi(sl<DioClient>()));
+  if (!sl.isRegistered<GithubApi>()) {
+    sl.registerLazySingleton<GithubApi>(() => GithubApi(sl<DioClient>()));
+  }
 
-  sl.registerLazySingleton<GithubRepository>(
-    () => GithubRepository(sl<GithubApi>()),
-  );
+  if (!sl.isRegistered<GithubRepository>()) {
+    sl.registerLazySingleton<GithubRepository>(
+      () => GithubRepository(sl<GithubApi>()),
+    );
+  }
 
-  sl.registerFactory<GithubBloc>(() => GithubBloc(sl<GithubRepository>()));
+  if (!sl.isRegistered<GithubBloc>()) {
+    sl.registerFactory<GithubBloc>(() => GithubBloc(sl<GithubRepository>()));
+  }
 }

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:githubexplorer/core/storage/recent_search_storage.dart';
+import 'package:githubexplorer/core/widgets/app_loader.dart';
+import 'package:githubexplorer/core/widgets/empty_state.dart';
+import 'package:githubexplorer/core/widgets/error_view.dart';
 import 'package:githubexplorer/features/github/presentation/bloc/github_bloc.dart';
 import 'package:githubexplorer/features/github/presentation/bloc/github_event.dart';
 import 'package:githubexplorer/features/github/presentation/bloc/github_state.dart';
 import 'package:githubexplorer/features/github/presentation/pages/repositories_page.dart';
 import 'package:githubexplorer/features/github/presentation/widgets/profile_card.dart';
+import 'package:githubexplorer/features/github/presentation/widgets/recent_searches.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -18,11 +23,31 @@ class _SearchPageState extends State<SearchPage> {
 
   final FocusNode _searchFocusNode = FocusNode();
 
+  final RecentSearchStorage _recentSearchStorage = RecentSearchStorage();
+
+  List<String> _recentSearches = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecentSearches();
+  }
+
   @override
   void dispose() {
     _usernameController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRecentSearches() async {
+    final searches = await _recentSearchStorage.getRecentSearches();
+
+    if (!mounted) return;
+
+    setState(() {
+      _recentSearches = searches;
+    });
   }
 
   void _searchUser() {
@@ -35,7 +60,41 @@ class _SearchPageState extends State<SearchPage> {
 
     context.read<GithubBloc>().add(SearchUser(username));
 
+    _saveRecentSearch(username);
+
     FocusScope.of(context).unfocus();
+  }
+
+  Future<void> _saveRecentSearch(String username) async {
+    await _recentSearchStorage.addSearch(username);
+
+    if (!mounted) return;
+
+    final searches = await _recentSearchStorage.getRecentSearches();
+
+    if (!mounted) return;
+
+    setState(() {
+      _recentSearches = searches;
+    });
+  }
+
+  void _searchRecentUser(String username) {
+    _usernameController.text = username;
+
+    context.read<GithubBloc>().add(SearchUser(username));
+
+    FocusScope.of(context).unfocus();
+  }
+
+  Future<void> _clearRecentSearches() async {
+    await _recentSearchStorage.clearSearches();
+
+    if (!mounted) return;
+
+    setState(() {
+      _recentSearches = [];
+    });
   }
 
   void _openRepositories(String username) {
@@ -65,7 +124,7 @@ class _SearchPageState extends State<SearchPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _SearchHeader(),
+              const _SearchHeader(),
 
               const SizedBox(height: 24),
 
@@ -76,7 +135,17 @@ class _SearchPageState extends State<SearchPage> {
                 onSearch: _searchUser,
               ),
 
-              const SizedBox(height: 24),
+              if (_recentSearches.isNotEmpty) ...[
+                const SizedBox(height: 20),
+
+                RecentSearches(
+                  searches: _recentSearches,
+                  onSearchTap: _searchRecentUser,
+                  onClear: _clearRecentSearches,
+                ),
+              ],
+
+              const SizedBox(height: 20),
 
               Expanded(
                 child: BlocBuilder<GithubBloc, GithubState>(
@@ -95,26 +164,36 @@ class _SearchPageState extends State<SearchPage> {
   Widget _buildContent(GithubState state) {
     switch (state.status) {
       case GithubStatus.initial:
-        return const _InitialView();
+        return const EmptyState(
+          icon: Icons.person_search_outlined,
+          title: 'Find a GitHub Profile',
+          message: 'Enter a GitHub username above to get started.',
+        );
 
       case GithubStatus.loading:
-        return const _LoadingView();
+        return const AppLoader(message: 'Searching GitHub...');
 
       case GithubStatus.failure:
-        return _ErrorView(
+        return ErrorView(
           message: state.errorMessage ?? 'Something went wrong.',
           onRetry: _searchUser,
         );
 
       case GithubStatus.success:
-        if (state.user == null) {
-          return const _InitialView();
+        final user = state.user;
+
+        if (user == null) {
+          return const EmptyState(
+            icon: Icons.person_search_outlined,
+            title: 'Find a GitHub Profile',
+            message: 'Enter a GitHub username above to get started.',
+          );
         }
 
         return ProfileCard(
-          user: state.user!,
+          user: user,
           onRepositoriesTap: () {
-            _openRepositories(state.user!.username);
+            _openRepositories(user.username);
           },
         );
     }
@@ -137,7 +216,8 @@ class _SearchHeader extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Search for a GitHub username to explore their profile and repositories.',
+          'Search for a GitHub username to explore their '
+          'profile and repositories.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -187,100 +267,6 @@ class _SearchField extends StatelessWidget {
             color: Theme.of(context).colorScheme.primary,
             width: 2,
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InitialView extends StatelessWidget {
-  const _InitialView();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.person_search_outlined,
-              size: 72,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Find a GitHub Profile',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Enter a GitHub username above to get started.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoadingView extends StatelessWidget {
-  const _LoadingView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 16),
-          Text('Searching GitHub...'),
-        ],
-      ),
-    );
-  }
-}
-
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Try Again'),
-            ),
-          ],
         ),
       ),
     );

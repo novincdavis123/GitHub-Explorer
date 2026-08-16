@@ -14,27 +14,35 @@ class ProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 20),
       child: Card(
         elevation: 0,
         margin: EdgeInsets.zero,
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
           child: Column(
             children: [
               _ProfileAvatar(avatarUrl: user.avatarUrl),
-              const SizedBox(height: 16),
+
+              const SizedBox(height: 20),
+
               _ProfileName(name: user.name, username: user.username),
-              if (user.bio != null && user.bio!.isNotEmpty) ...[
+
+              if (user.bio?.trim().isNotEmpty == true) ...[
                 const SizedBox(height: 16),
                 _Bio(bio: user.bio!),
               ],
-              const SizedBox(height: 24),
+
+              const SizedBox(height: 28),
+
               _ProfileStats(
                 followers: user.followers,
                 following: user.following,
                 repositories: user.publicRepos,
               ),
+
               const SizedBox(height: 28),
+
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
@@ -58,17 +66,35 @@ class _ProfileAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (avatarUrl.isEmpty) {
+      return CircleAvatar(
+        radius: 52,
+        backgroundColor: colorScheme.surfaceContainerHighest,
+        child: Icon(
+          Icons.person,
+          size: 52,
+          color: colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+
     return CircleAvatar(
       radius: 52,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      backgroundColor: colorScheme.surfaceContainerHighest,
       child: ClipOval(
         child: Image.network(
           avatarUrl,
           width: 104,
           height: 104,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) {
-            return const Icon(Icons.person, size: 52);
+          errorBuilder: (_, _, _) {
+            return Icon(
+              Icons.person,
+              size: 52,
+              color: colorScheme.onSurfaceVariant,
+            );
           },
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) {
@@ -78,7 +104,7 @@ class _ProfileAvatar extends StatelessWidget {
             return const SizedBox(
               width: 104,
               height: 104,
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             );
           },
         ),
@@ -95,18 +121,27 @@ class _ProfileName extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayName = name?.trim().isNotEmpty == true
+        ? name!.trim()
+        : username;
+
     return Column(
       children: [
         Text(
-          name?.isNotEmpty == true ? name! : username,
+          displayName,
           textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
+
         const SizedBox(height: 4),
+
         Text(
           '@$username',
+          textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -124,9 +159,11 @@ class _Bio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      bio,
+      bio.trim(),
       textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.bodyMedium,
+      maxLines: 5,
+      overflow: TextOverflow.ellipsis,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
     );
   }
 }
@@ -145,11 +182,19 @@ class _ProfileStats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _StatItem(value: _formatCount(followers), label: 'Followers'),
-        _StatItem(value: _formatCount(following), label: 'Following'),
-        _StatItem(value: _formatCount(repositories), label: 'Repositories'),
+        Expanded(
+          child: _StatItem(value: _formatCount(followers), label: 'Followers'),
+        ),
+        Expanded(
+          child: _StatItem(value: _formatCount(following), label: 'Following'),
+        ),
+        Expanded(
+          child: _StatItem(
+            value: _formatCount(repositories),
+            label: 'Repositories',
+          ),
+        ),
       ],
     );
   }
@@ -175,6 +220,8 @@ class _StatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Column(
       children: [
         Text(
@@ -183,12 +230,15 @@ class _StatItem extends StatelessWidget {
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
+
         const SizedBox(height: 4),
+
         Text(
           label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
+          textAlign: TextAlign.center,
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
         ),
       ],
     );

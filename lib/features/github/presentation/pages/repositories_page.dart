@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:githubexplorer/core/widgets/app_loader.dart';
+import 'package:githubexplorer/core/widgets/empty_state.dart';
+import 'package:githubexplorer/core/widgets/error_view.dart';
+import 'package:githubexplorer/features/github/data/models/github_repo_model.dart';
 import 'package:githubexplorer/features/github/presentation/bloc/github_bloc.dart';
 import 'package:githubexplorer/features/github/presentation/bloc/github_event.dart';
 import 'package:githubexplorer/features/github/presentation/bloc/github_state.dart';
+import 'package:githubexplorer/features/github/presentation/widgets/repo_card.dart';
 
 class RepositoriesPage extends StatefulWidget {
   const RepositoriesPage({super.key, required this.username});
@@ -21,29 +26,37 @@ class _RepositoriesPageState extends State<RepositoriesPage> {
     context.read<GithubBloc>().add(LoadRepositories(widget.username));
   }
 
+  void _loadRepositories() {
+    context.read<GithubBloc>().add(LoadRepositories(widget.username));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.username}\'s Repositories')),
+      appBar: AppBar(
+        title: Text(
+          '${widget.username}\'s Repositories',
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
       body: BlocBuilder<GithubBloc, GithubState>(
         builder: (context, state) {
           switch (state.status) {
             case GithubStatus.initial:
             case GithubStatus.loading:
-              return const Center(child: CircularProgressIndicator());
+              return const AppLoader(message: 'Loading repositories...');
 
             case GithubStatus.failure:
-              return _ErrorView(
-                message: state.errorMessage ?? 'Something went wrong.',
-                onRetry: () {
-                  context.read<GithubBloc>().add(
-                    LoadRepositories(widget.username),
-                  );
-                },
+              return ErrorView(
+                message: state.errorMessage ?? 'Unable to load repositories.',
+                onRetry: _loadRepositories,
               );
 
             case GithubStatus.success:
-              return _RepositoryContent(state: state);
+              return _RepositoryContent(
+                repositories: state.repositories,
+                sortType: state.sortType,
+              );
           }
         },
       ),
@@ -52,34 +65,42 @@ class _RepositoriesPageState extends State<RepositoriesPage> {
 }
 
 class _RepositoryContent extends StatelessWidget {
-  const _RepositoryContent({required this.state});
+  const _RepositoryContent({
+    required this.repositories,
+    required this.sortType,
+  });
 
-  final GithubState state;
+  final List<GithubRepoModel> repositories;
+  final SortType sortType;
 
   @override
   Widget build(BuildContext context) {
-    if (state.repositories.isEmpty) {
-      return const _EmptyRepositoriesView();
+    if (repositories.isEmpty) {
+      return const EmptyState(
+        icon: Icons.folder_open_outlined,
+        title: 'No public repositories',
+        message: 'This user does not have any public repositories.',
+      );
     }
 
     return Column(
       children: [
         _SortSelector(
-          selectedType: state.sortType,
+          selectedType: sortType,
           onChanged: (type) {
             context.read<GithubBloc>().add(SortRepositories(type));
           },
         ),
+
         const Divider(height: 1),
+
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: state.repositories.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemCount: repositories.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final repository = state.repositories[index];
-
-              return _RepositoryCard(repository: repository);
+              return RepositoryCard(repository: repositories[index]);
             },
           ),
         ),
@@ -100,7 +121,7 @@ class _SortSelector extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          const Icon(Icons.sort),
+          Icon(Icons.sort, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: 8),
           const Text('Sort by', style: TextStyle(fontWeight: FontWeight.w600)),
           const Spacer(),
@@ -122,153 +143,6 @@ class _SortSelector extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _RepositoryCard extends StatelessWidget {
-  const _RepositoryCard({required this.repository});
-
-  final dynamic repository;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              repository.name,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            if (repository.description != null &&
-                repository.description!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                repository.description!,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: [
-                _InfoItem(
-                  icon: Icons.star_border,
-                  label: '${repository.stars}',
-                ),
-                if (repository.language != null &&
-                    repository.language!.isNotEmpty)
-                  _InfoItem(icon: Icons.code, label: repository.language!),
-                _InfoItem(
-                  icon: Icons.update,
-                  label: _formatDate(repository.updatedAt),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) {
-      return 'Unknown';
-    }
-
-    return '${date.day.toString().padLeft(2, '0')}/'
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.year}';
-  }
-}
-
-class _InfoItem extends StatelessWidget {
-  const _InfoItem({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 17, color: Theme.of(context).colorScheme.primary),
-        const SizedBox(width: 5),
-        Text(label),
-      ],
-    );
-  }
-}
-
-class _EmptyRepositoriesView extends StatelessWidget {
-  const _EmptyRepositoriesView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.folder_open_outlined, size: 56),
-            SizedBox(height: 16),
-            Text(
-              'No public repositories',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'This user does not have any public repositories.',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
-
-  final String message;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 56),
-            const SizedBox(height: 16),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Try Again'),
-            ),
-          ],
-        ),
       ),
     );
   }
