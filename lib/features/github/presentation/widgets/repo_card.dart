@@ -8,36 +8,50 @@ class RepositoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _RepositoryHeader(name: repository.name),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _RepositoryHeader(name: repository.name),
 
-            if (_hasDescription) ...[
-              const SizedBox(height: 8),
-              Text(
-                repository.description!,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              if (_hasDescription) ...[
+                const SizedBox(height: 10),
+                Text(
+                  repository.description!.trim(),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    height: 1.4,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
+              ],
+
+              const SizedBox(height: 16),
+
+              _RepositoryInfo(
+                stars: repository.stars,
+                language: repository.language,
+                updatedAt: repository.updatedAt,
               ),
             ],
-
-            const SizedBox(height: 16),
-
-            _RepositoryInfo(
-              stars: repository.stars,
-              language: repository.language,
-              updatedAt: repository.updatedAt,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -56,21 +70,49 @@ class _RepositoryHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          Icons.folder_outlined,
-          size: 22,
-          color: Theme.of(context).colorScheme.primary,
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            Icons.folder_outlined,
+            size: 21,
+            color: colorScheme.onPrimaryContainer,
+          ),
         ),
-        const SizedBox(width: 10),
+
+        const SizedBox(width: 12),
+
         Expanded(
-          child: Text(
-            name,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+
+              const SizedBox(height: 3),
+
+              Text(
+                'Public repository',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -92,13 +134,15 @@ class _RepositoryInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 16,
-      runSpacing: 10,
+      spacing: 8,
+      runSpacing: 8,
       children: [
-        _InfoItem(icon: Icons.star_border, label: '$stars'),
+        _InfoChip(icon: Icons.star_rounded, label: '$stars'),
+
         if (language != null && language!.trim().isNotEmpty)
-          _InfoItem(icon: Icons.code, label: language!),
-        _InfoItem(icon: Icons.update, label: _formatDate(updatedAt)),
+          _InfoChip(icon: Icons.code_rounded, label: language!.trim()),
+
+        _InfoChip(icon: Icons.update_rounded, label: _formatDate(updatedAt)),
       ],
     );
   }
@@ -114,21 +158,35 @@ class _RepositoryInfo extends StatelessWidget {
   }
 }
 
-class _InfoItem extends StatelessWidget {
-  const _InfoItem({required this.icon, required this.label});
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.icon, required this.label});
 
   final IconData icon;
   final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 17, color: Theme.of(context).colorScheme.primary),
-        const SizedBox(width: 5),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-      ],
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: colorScheme.primary),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
     );
   }
 }

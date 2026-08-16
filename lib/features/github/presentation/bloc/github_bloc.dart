@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:githubexplorer/features/github/data/github_repository.dart';
+import 'package:githubexplorer/features/github/data/models/github_repo_model.dart';
 import 'package:githubexplorer/features/github/presentation/bloc/github_event.dart';
 import 'package:githubexplorer/features/github/presentation/bloc/github_state.dart';
 
@@ -83,12 +84,19 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
     );
 
     try {
-      final repositories = await _repository.getRepositories(username);
+      final fetchedRepositories = await _repository.getRepositories(username);
+
+      // Create a copy so we don't mutate the repository layer's list.
+      final repositories = List<GithubRepoModel>.from(fetchedRepositories);
+
+      // Default sorting: highest stars first.
+      repositories.sort((a, b) => b.stars.compareTo(a.stars));
 
       emit(
         state.copyWith(
           status: GithubStatus.success,
           repositories: repositories,
+          sortType: SortType.stars,
           errorMessage: null,
         ),
       );
@@ -103,11 +111,16 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
   }
 
   void _onSortRepositories(SortRepositories event, Emitter<GithubState> emit) {
-    final repositories = [...state.repositories];
+    if (state.repositories.isEmpty) {
+      return;
+    }
+
+    final repositories = List<GithubRepoModel>.from(state.repositories);
 
     switch (event.type) {
       case SortType.stars:
         repositories.sort((a, b) => b.stars.compareTo(a.stars));
+        break;
 
       case SortType.recentlyUpdated:
         repositories.sort((a, b) {
@@ -116,6 +129,7 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
 
           return dateB.compareTo(dateA);
         });
+        break;
     }
 
     emit(state.copyWith(repositories: repositories, sortType: event.type));
@@ -134,10 +148,21 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.receiveTimeout:
         case DioExceptionType.sendTimeout:
-          return 'Unable to connect to GitHub. Please check your internet connection.';
+        case DioExceptionType.transformTimeout:
+        case DioExceptionType.unknown:
+          return 'Unable to connect to GitHub. '
+              'Please check your internet connection.';
 
-        default:
-          break;
+        case DioExceptionType.badResponse:
+          return 'GitHub returned an unexpected response. '
+              'Please try again.';
+
+        case DioExceptionType.cancel:
+          return 'The request was cancelled. Please try again.';
+
+        case DioExceptionType.badCertificate:
+          return 'Secure connection to GitHub failed. '
+              'Please try again.';
       }
     }
 

@@ -20,9 +20,7 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController _usernameController = TextEditingController();
-
   final FocusNode _searchFocusNode = FocusNode();
-
   final RecentSearchStorage _recentSearchStorage = RecentSearchStorage();
 
   List<String> _recentSearches = [];
@@ -43,7 +41,9 @@ class _SearchPageState extends State<SearchPage> {
   Future<void> _loadRecentSearches() async {
     final searches = await _recentSearchStorage.getRecentSearches();
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _recentSearches = searches;
@@ -68,11 +68,15 @@ class _SearchPageState extends State<SearchPage> {
   Future<void> _saveRecentSearch(String username) async {
     await _recentSearchStorage.addSearch(username);
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     final searches = await _recentSearchStorage.getRecentSearches();
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _recentSearches = searches;
@@ -90,7 +94,9 @@ class _SearchPageState extends State<SearchPage> {
   Future<void> _clearRecentSearches() async {
     await _recentSearchStorage.clearSearches();
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _recentSearches = [];
@@ -110,52 +116,69 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'GitHub Explorer',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        elevation: 0,
+        titleSpacing: 20,
+        title: Row(
+          children: [
+            Icon(Icons.code_rounded, color: colorScheme.primary),
+            const SizedBox(width: 10),
+            const Text(
+              'GitHub Explorer',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
         ),
-        centerTitle: true,
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _SearchHeader(),
-
-              const SizedBox(height: 24),
-
-              _SearchField(
-                controller: _usernameController,
-                focusNode: _searchFocusNode,
-                onSubmitted: (_) => _searchUser(),
-                onSearch: _searchUser,
-              ),
-
-              if (_recentSearches.isNotEmpty) ...[
-                const SizedBox(height: 20),
-
-                RecentSearches(
-                  searches: _recentSearches,
-                  onSearchTap: _searchRecentUser,
-                  onClear: _clearRecentSearches,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 44,
                 ),
-              ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const _SearchHeader(),
 
-              const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
-              Expanded(
-                child: BlocBuilder<GithubBloc, GithubState>(
-                  builder: (context, state) {
-                    return _buildContent(state);
-                  },
+                    _SearchField(
+                      controller: _usernameController,
+                      focusNode: _searchFocusNode,
+                      onSubmitted: (_) => _searchUser(),
+                      onSearch: _searchUser,
+                    ),
+
+                    if (_recentSearches.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      RecentSearches(
+                        searches: _recentSearches,
+                        onSearchTap: _searchRecentUser,
+                        onClear: _clearRecentSearches,
+                      ),
+                    ],
+
+                    const SizedBox(height: 24),
+
+                    BlocBuilder<GithubBloc, GithubState>(
+                      builder: (context, state) {
+                        return _buildContent(state);
+                      },
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -164,19 +187,28 @@ class _SearchPageState extends State<SearchPage> {
   Widget _buildContent(GithubState state) {
     switch (state.status) {
       case GithubStatus.initial:
-        return const EmptyState(
-          icon: Icons.person_search_outlined,
-          title: 'Find a GitHub Profile',
-          message: 'Enter a GitHub username above to get started.',
+        return const Padding(
+          padding: EdgeInsets.only(top: 20),
+          child: EmptyState(
+            icon: Icons.person_search_outlined,
+            title: 'Find a GitHub Profile',
+            message: 'Enter a GitHub username above to get started.',
+          ),
         );
 
       case GithubStatus.loading:
-        return const AppLoader(message: 'Searching GitHub...');
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 48),
+          child: AppLoader(message: 'Searching GitHub...'),
+        );
 
       case GithubStatus.failure:
-        return ErrorView(
-          message: state.errorMessage ?? 'Something went wrong.',
-          onRetry: _searchUser,
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32),
+          child: ErrorView(
+            message: state.errorMessage ?? 'Something went wrong.',
+            onRetry: _searchUser,
+          ),
         );
 
       case GithubStatus.success:
@@ -205,21 +237,26 @@ class _SearchHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Explore GitHub',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+          style: theme.textTheme.headlineMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
           'Search for a GitHub username to explore their '
           'profile and repositories.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            height: 1.5,
+            color: colorScheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -242,30 +279,59 @@ class _SearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      focusNode: focusNode,
-      textInputAction: TextInputAction.search,
-      textCapitalization: TextCapitalization.none,
-      autocorrect: false,
-      onSubmitted: onSubmitted,
-      decoration: InputDecoration(
-        hintText: 'Enter GitHub username',
-        prefixIcon: const Icon(Icons.search),
-        suffixIcon: IconButton(
-          onPressed: onSearch,
-          icon: const Icon(Icons.arrow_forward),
-          tooltip: 'Search',
-        ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.primary,
-            width: 2,
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        textInputAction: TextInputAction.search,
+        textCapitalization: TextCapitalization.none,
+        autocorrect: false,
+        onSubmitted: onSubmitted,
+        decoration: InputDecoration(
+          hintText: 'Enter GitHub username',
+          hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: colorScheme.onSurfaceVariant,
+          ),
+          suffixIcon: Padding(
+            padding: const EdgeInsets.all(6),
+            child: IconButton.filled(
+              onPressed: onSearch,
+              tooltip: 'Search',
+              icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+            ),
+          ),
+          filled: true,
+          fillColor: colorScheme.surface,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 16,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: colorScheme.outlineVariant),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: colorScheme.outlineVariant),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: colorScheme.primary, width: 2),
           ),
         ),
       ),

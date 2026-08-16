@@ -22,7 +22,6 @@ class _RepositoriesPageState extends State<RepositoriesPage> {
   @override
   void initState() {
     super.initState();
-
     context.read<GithubBloc>().add(LoadRepositories(widget.username));
   }
 
@@ -32,11 +31,28 @@ class _RepositoriesPageState extends State<RepositoriesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          '${widget.username}\'s Repositories',
-          overflow: TextOverflow.ellipsis,
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            Icon(
+              Icons.folder_copy_outlined,
+              color: colorScheme.primary,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${widget.username}\'s Repositories',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
         ),
       ),
       body: BlocBuilder<GithubBloc, GithubState>(
@@ -84,19 +100,18 @@ class _RepositoryContent extends StatelessWidget {
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SortSelector(
-          selectedType: sortType,
-          onChanged: (type) {
-            context.read<GithubBloc>().add(SortRepositories(type));
-          },
+        _RepositoryHeader(
+          repositoryCount: repositories.length,
+          sortType: sortType,
         ),
 
         const Divider(height: 1),
 
         Expanded(
           child: ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             itemCount: repositories.length,
             separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
@@ -109,6 +124,57 @@ class _RepositoryContent extends StatelessWidget {
   }
 }
 
+class _RepositoryHeader extends StatelessWidget {
+  const _RepositoryHeader({
+    required this.repositoryCount,
+    required this.sortType,
+  });
+
+  final int repositoryCount;
+  final SortType sortType;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Repositories',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '$repositoryCount public '
+                  '${repositoryCount == 1 ? 'repository' : 'repositories'}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _SortSelector(
+            selectedType: sortType,
+            onChanged: (type) {
+              context.read<GithubBloc>().add(SortRepositories(type));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SortSelector extends StatelessWidget {
   const _SortSelector({required this.selectedType, required this.onChanged});
 
@@ -117,32 +183,52 @@ class _SortSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: Row(
-        children: [
-          Icon(Icons.sort, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 8),
-          const Text('Sort by', style: TextStyle(fontWeight: FontWeight.w600)),
-          const Spacer(),
-          DropdownButtonHideUnderline(
-            child: DropdownButton<SortType>(
-              value: selectedType,
-              items: const [
-                DropdownMenuItem(value: SortType.stars, child: Text('Stars')),
-                DropdownMenuItem(
-                  value: SortType.recentlyUpdated,
-                  child: Text('Recently Updated'),
-                ),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  onChanged(value);
-                }
-              },
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<SortType>(
+          value: selectedType,
+          isDense: true,
+          borderRadius: BorderRadius.circular(12),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          items: const [
+            DropdownMenuItem(
+              value: SortType.stars,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.star_outline_rounded, size: 18),
+                  SizedBox(width: 6),
+                  Text('Stars'),
+                ],
+              ),
             ),
-          ),
-        ],
+            DropdownMenuItem(
+              value: SortType.recentlyUpdated,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.update_rounded, size: 18),
+                  SizedBox(width: 6),
+                  Text('Recently Updated'),
+                ],
+              ),
+            ),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              onChanged(value);
+            }
+          },
+        ),
       ),
     );
   }
